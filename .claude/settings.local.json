@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py -3.12 --version)",
+      "Bash(./venv/Scripts/python.exe -m pip install --upgrade pip)"
+    ]
+  }
+}
