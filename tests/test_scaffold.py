@@ -74,3 +74,44 @@ def test_predict_output_explicit_trace_id():
         trace_id="fixed-id-123",
     )
     assert out.trace_id == "fixed-id-123"
+
+
+def test_base_model_cannot_instantiate_directly():
+    from src.models.base import BaseModel
+
+    with pytest.raises(TypeError):
+        BaseModel()  # type: ignore[abstract]
+
+
+def test_base_model_concrete_subclass():
+    import numpy as np
+    import pandas as pd
+
+    from src.models.base import BaseModel
+
+    class DummyModel(BaseModel):
+        def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
+            pass
+
+        def predict(self, X: pd.DataFrame) -> np.ndarray:
+            return np.zeros(len(X), dtype=int)
+
+        def predict_proba(self, X: pd.DataFrame) -> np.ndarray:
+            return np.zeros((len(X), 2))
+
+        def save(self, path: str) -> None:
+            pass
+
+        def load(self, path: str) -> None:
+            pass
+
+    model = DummyModel()
+    X = pd.DataFrame({"a": [1, 2, 3]})
+    y = pd.Series([0, 1, 0])
+    model.fit(X, y)
+    preds = model.predict(X)
+    proba = model.predict_proba(X)
+    model.save("dummy.pkl")
+    model.load("dummy.pkl")
+    assert preds.shape == (3,)
+    assert proba.shape == (3, 2)
