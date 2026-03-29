@@ -1,4 +1,5 @@
 """Abstract base class shared by XGBoost and LightGBM wrappers."""
+
 from abc import ABC, abstractmethod
 
 import numpy as np

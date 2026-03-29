@@ -1,4 +1,5 @@
 """Centralized JSON logger for B2 project. Always import from here."""
+
 import logging
 import sys
 from pythonjsonlogger import jsonlogger

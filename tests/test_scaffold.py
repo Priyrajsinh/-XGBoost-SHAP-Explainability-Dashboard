@@ -1,4 +1,5 @@
 """Day 0 scaffold smoke tests — must all pass before any training begins."""
+
 import pytest
 
 

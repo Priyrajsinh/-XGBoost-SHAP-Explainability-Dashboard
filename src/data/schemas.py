@@ -1,4 +1,5 @@
 """Pydantic request/response schemas for the FastAPI prediction endpoint."""
+
 import uuid
 
 from pydantic import BaseModel, validator
