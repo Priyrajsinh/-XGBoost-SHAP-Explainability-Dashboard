@@ -1,0 +1,16 @@
+models/*.joblib
+models/*.pkl
+data/raw/*.csv
+.env
+mlruns/
+venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+models/optuna.db
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/

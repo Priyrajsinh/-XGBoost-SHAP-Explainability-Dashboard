@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(py -3.12 --version)",
-      "Bash(./venv/Scripts/python.exe -m pip install --upgrade pip)"
+      "Bash(./venv/Scripts/python.exe -m pip install --upgrade pip)",
+      "Bash(./venv/Scripts/python.exe -m pip install -r requirements.txt -r requirements-dev.txt)",
+      "Bash(BASE=\"C:/Users/91816/Desktop/portfolio-projects/B2-XGBoost-SHAP\")",
+      "Bash(mkdir -p \"$BASE/src/data\" \"$BASE/src/models\" \"$BASE/src/training\" \"$BASE/src/evaluation\" \"$BASE/src/api\" \"$BASE/tests\" \"$BASE/config\" \"$BASE/data/raw\" \"$BASE/data/processed\" \"$BASE/models\" \"$BASE/reports/figures\")",
+      "Bash(touch \"$BASE/src/__init__.py\" \"$BASE/src/data/__init__.py\" \"$BASE/src/models/__init__.py\" \"$BASE/src/training/__init__.py\" \"$BASE/src/evaluation/__init__.py\" \"$BASE/src/api/__init__.py\" \"$BASE/tests/__init__.py\")",
+      "Bash(./venv/Scripts/python.exe -m bandit -r src/ -ll)",
+      "Bash(./venv/Scripts/python.exe -m pytest tests/ -v)"
     ]
   }
 }

@@ -1,0 +1,49 @@
+model:
+  xgb:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    min_child_weight: 1
+    gamma: 0
+    reg_alpha: 0
+    reg_lambda: 1
+    scale_pos_weight: 1.85
+    random_state: 42
+  lgbm:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.05
+    num_leaves: 31
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 42
+
+optuna:
+  n_trials: 50
+  direction: maximize
+  metric: weighted_f1
+
+data:
+  train_split: 0.70
+  val_split: 0.15
+  test_split: 0.15
+  seed: 42
+  zero_as_nan_cols: [Glucose, BloodPressure, SkinThickness, Insulin, BMI]
+
+api:
+  rate_limit_predict: 30/minute
+  max_payload_mb: 1
+  cors_origins: ['http://localhost:3000']
+
+shap:
+  max_display: 20
+  dependence_features: [Glucose, BMI, Age]
+
+mlflow:
+  experiment_name: b2-xgboost-shap
+  registered_model_name: DiabetesClassifier
+
+docker:
+  image_name: b2-xgboost-shap
