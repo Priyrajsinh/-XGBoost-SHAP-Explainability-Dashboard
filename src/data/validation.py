@@ -3,7 +3,6 @@
 Call DIABETES_SCHEMA.validate(df) BEFORE any train/test split.
 """
 
-import pandera as pa
 from pandera import Check, Column, DataFrameSchema
 
 DIABETES_SCHEMA = DataFrameSchema(
