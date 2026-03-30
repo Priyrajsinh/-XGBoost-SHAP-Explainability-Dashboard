@@ -152,3 +152,54 @@
 - Next step: Day 3 — SHAP explainability (shap.Explainer unified API, summary/waterfall/dependence/force plots).
 
 ---
+
+## Day 3 — 2026-03-30 — SHAP unified API, 4 plot types, calibration curve, Brier score
+> Project: B2-XGBoost-SHAP
+
+### What was done
+- Created `src/evaluation/shap_analysis.py`: `compute_shap`, `_plot_beeswarm`, `_plot_global_bar`, `_plot_waterfalls`, `_plot_dependence`, `run_calibration`, `_update_results_json`, `main`.
+- Discovered SHAP 0.49 unified API requires `model.predict_proba` callable, not the estimator directly; sliced `[:, :, 1]` for class-1 values.
+- Generated all 4 SHAP artifact types: beeswarm PNG, Plotly HTML bar, waterfall PNGs (TP/TN/FP), dependence scatter PNGs.
+- Calibrated XGBoost with `CalibratedClassifierCV(cv='prefit', method='isotonic')` on val set; logged Brier scores via MLflow.
+- Added 14 tests in `tests/test_shap_analysis.py`; full suite 50/50, 90% coverage.
+
+### Why it was done
+- Raw model probabilities are often miscalibrated — Brier score quantifies this and calibration curve visualises it.
+- SHAP explains individual predictions (waterfall) and global feature importance (beeswarm/bar) required for the portfolio dashboard.
+- Feature importance JSON feeds the Streamlit app; Plotly HTML renders with `st.plotly_chart`.
+
+### How it was done
+- `shap.Explainer(model.predict_proba, X_train_df, feature_names=cols)` — DataFrame background preserves column names for `shap_values[:, "Glucose"]` slicing.
+- `shap_values_full[:, :, 1]` slices the (n, features, 2) output to class-1 Explanation; all SHAP plot functions receive this.
+- TP/TN/FP indices found with `np.where((y_test==1)&(y_pred==1))[0]`; fallback to index 0 if class absent.
+- `matplotlib.use("Agg")` set before pyplot import; `# noqa: E402` suppresses flake8 E402 for all deferred imports.
+
+### Why this tool / library — not alternatives
+| Tool Used | Why This | Rejected Alternative | Why Not |
+|-----------|----------|---------------------|---------|
+| shap.Explainer unified API | Auto-selects best explainer; consistent API across model types | shap.TreeExplainer directly | Fails in SHAP 0.49 with sklearn-wrapped XGBoost due to booster string parsing |
+| CalibratedClassifierCV(cv='prefit') | Calibrates a pre-fitted model on held-out val set with no retraining | cv=5 (cross-val) | Would re-train the model — incompatible with Optuna-tuned weights |
+| Isotonic regression calibration | Non-parametric; better than Platt scaling when sigmoid assumption fails | Platt (sigmoid) | Assumes sigmoid shape; less flexible for tree models |
+| Plotly HTML for bar chart | Interactive, embeds in Streamlit with `st.plotly_chart` | Matplotlib static PNG | Static; no hover tooltips for feature values |
+
+### Definitions (plain English)
+- **Brier score**: Mean squared error between predicted probabilities and true binary labels; 0 = perfect, 0.25 = random, lower is better.
+- **Calibration**: A model is calibrated if predicted probability 0.7 means ~70% of those cases actually belong to the positive class.
+- **Waterfall plot**: A SHAP plot for one prediction showing how each feature pushed the output up or down from the baseline.
+- **Dependence plot**: Scatter of SHAP value vs feature value for one feature; reveals non-linear effects and interactions.
+- **predict_proba callable**: In SHAP 0.49+, passing `model.predict_proba` instead of `model` tells SHAP to treat the model as a black-box function rather than inspecting its internals.
+
+### Real-world use case
+- SHAP waterfall + calibration: Used at insurance companies (e.g. Allianz) to explain individual claim risk scores and ensure probability outputs are trustworthy for pricing.
+- Brier score monitoring: Used in clinical decision support systems (Epic, Cerner) where a poorly calibrated probability could mislead a physician.
+- Plotly SHAP bars: Used in Databricks AutoML to display feature importances in the interactive experiment UI.
+
+### How to remember it
+- **Calibration = a weather forecast analogy**: if your model says 70% chance of rain every day, but it only rains 40% of those days, it's *overconfident* and needs calibration.
+- **Brier score = golf**: lower is better; 0 = hole in one, 0.25 = didn't even leave the tee.
+
+### Status
+- [x] Done
+- Next step: Day 4 — Streamlit dashboard: load SHAP artifacts, render beeswarm/waterfall/dependence with `st.plotly_chart` and `st.image`.
+
+---
