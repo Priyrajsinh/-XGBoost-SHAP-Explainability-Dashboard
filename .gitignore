@@ -3,6 +3,7 @@ models/*.pkl
 data/raw/*.csv
 .env
 mlruns/
+mlflow.db
 venv/
 __pycache__/
 *.pyc
@@ -14,3 +15,4 @@ dist/
 build/
 .coverage
 htmlcov/
+.claude/settings.local.json
