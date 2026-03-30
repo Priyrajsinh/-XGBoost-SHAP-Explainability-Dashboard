@@ -8,7 +8,7 @@ from pandera import Check, Column, DataFrameSchema
 DIABETES_SCHEMA = DataFrameSchema(
     {
         "Pregnancies": Column(int, Check.ge(0)),
-        "Glucose": Column(float, Check.gt(0)),
+        "Glucose": Column(float, Check.ge(0)),
         "BloodPressure": Column(float, Check.ge(0)),
         "SkinThickness": Column(float, Check.ge(0)),
         "Insulin": Column(float, Check.ge(0)),
