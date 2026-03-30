@@ -104,3 +104,51 @@
 - Next step: Day 2 — XGBoost + LightGBM baseline training, MLflow experiment tracking, Optuna hyperparameter tuning.
 
 ---
+
+## Day 2 — 2026-03-30 — Optuna HPO + XGBoost + LightGBM + MLflow Registry
+> Project: B2-XGBoost-SHAP
+
+### What was done
+- Created `src/training/train.py` with `run_optuna_study()`, `train_final_models()`, `_register_to_mlflow()`, and `main()` CLI.
+- 50-trial Optuna TPE study tunes 9 XGBoost hyperparameters; persists to SQLite for optuna-dashboard replay.
+- Trained final XGBoost (Optuna best params) and LightGBM (config params); saved as `.joblib`.
+- Logged best params, val F1, and model artifact to MLflow; transitioned registered model to Staging.
+- Added `tests/test_train.py` with 9 tests; full suite 36/36 passing at 96% coverage.
+
+### Why it was done
+- Grid/random search is inefficient for 9 continuous hyperparameters; TPE converges in ~50 trials.
+- Two model types (XGB + LGBM) enable direct comparison before choosing what to explain with SHAP.
+- MLflow Model Registry enables versioned lifecycle management for staged rollouts (Staging → Production).
+
+### How it was done
+- `optuna.create_study` with `TPESampler(seed=42)` + `MedianPruner` + SQLite storage for reproducibility.
+- `study.best_params` unpacked into `XGBClassifier`; LightGBM params read directly from `config["model"]["lgbm"]`.
+- `mlflow.sklearn.log_model` + `mlflow.register_model` + `client.transition_model_version_stage("Staging")`.
+- Tests use `monkeypatch` to redirect `_MODELS_DIR` / `_PROCESSED_DIR`; MLflow fully mocked with `unittest.mock.patch`.
+
+### Why this tool / library — not alternatives
+| Tool Used | Why This | Rejected Alternative | Why Not |
+|-----------|----------|---------------------|---------|
+| Optuna TPE | Bayesian sequential search converges in ~50 trials | GridSearchCV | Exponential search space; no pruning |
+| MedianPruner | Kills unpromising trials early, saves compute | No pruner | All 50 trials run to completion regardless |
+| SQLite storage | Enables optuna-dashboard for live trial visualisation | In-memory | Lost on process exit; no dashboard support |
+| mlflow.sklearn.log_model | Unified sklearn-compatible API for XGBoost | mlflow.xgboost.log_model | Less flexible when wrapping in sklearn Pipelines |
+| joblib.dump | Fastest for tree-based numpy-heavy estimators | pickle | joblib ~2× faster for large numpy arrays |
+
+### Definitions (plain English)
+- **TPE Sampler**: Tree-structured Parzen Estimator — models which hyperparameter values scored well and samples more from those regions next.
+- **MedianPruner**: Stops a trial early if its score is below the median of all completed trials at the same step.
+- **MLflow Model Registry**: A versioned catalog of trained models with lifecycle stages: None → Staging → Production → Archived.
+- **best_params**: The hyperparameter dictionary from the trial with the highest objective value in the Optuna study.
+
+### Real-world use case
+- Spotify uses Optuna for recommendation model tuning; DoorDash uses MLflow Model Registry for staged rollouts of demand forecasting models.
+
+### How to remember it
+- Optuna is a "smart random search": it remembers which hyperparameter regions scored well and explores there next — like a detective narrowing suspects after each clue.
+
+### Status
+- [x] Done
+- Next step: Day 3 — SHAP explainability (shap.Explainer unified API, summary/waterfall/dependence/force plots).
+
+---
