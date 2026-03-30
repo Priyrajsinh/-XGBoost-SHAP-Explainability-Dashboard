@@ -144,6 +144,7 @@ def train_final_models(
         subsample=lgbm_cfg["subsample"],
         colsample_bytree=lgbm_cfg["colsample_bytree"],
         random_state=lgbm_cfg["random_state"],
+        verbosity=lgbm_cfg["verbosity"],
     )
 
     xgb_model.fit(X_train, y_train)

@@ -30,6 +30,7 @@ _MINIMAL_CONFIG = {
             "subsample": 0.8,
             "colsample_bytree": 0.8,
             "random_state": 42,
+            "verbosity": -1,
         }
     },
     "mlflow": {
