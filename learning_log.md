@@ -203,3 +203,48 @@
 - Next step: Day 4 — Streamlit dashboard: load SHAP artifacts, render beeswarm/waterfall/dependence with `st.plotly_chart` and `st.image`.
 
 ---
+
+## Day 4 — 2026-03-31 — Streamlit 4-tab interactive dashboard with Plotly SHAP
+> Project: B2-XGBoost-SHAP
+
+### What was done
+- Built `src/api/streamlit_app.py` with four tabs: Predict, Global SHAP, Feature Dependence, HPO History.
+- Tab 1: 8 sliders → impute → calibrated XGBoost predict → Plotly Waterfall SHAP per-sample.
+- Tab 2: Plotly horizontal bar of mean |SHAP| + XGBoost vs LightGBM metrics table.
+- Tab 3: Plotly scatter dependence plot (feature vs SHAP value, coloured by Glucose).
+- Tab 4: Optuna study loaded from `models/optuna.db`; trial convergence as Plotly line chart.
+
+### Why it was done
+- Days 0–3 produced static reports; Day 4 wraps everything in a live interactive UI so stakeholders can explore predictions without code.
+
+### How it was done
+- `@st.cache_data` on `load_all()` so models/SHAP arrays are read once and reused across interactions.
+- `st.tabs()` splits concerns cleanly; each tab is an independent `with` block.
+- `explainer(input_imp)` (callable SHAP API) computes single-row SHAP values on demand.
+- `go.Waterfall` renders per-prediction SHAP as a horizontal waterfall via Plotly (not `st.pyplot`).
+
+### Why this tool / library — not alternatives
+| Tool Used | Why This | Rejected Alternative | Why Not |
+|-----------|----------|---------------------|---------|
+| Streamlit | Zero-boilerplate Python web UI, ideal for ML demos | Gradio | Less flexible multi-tab layout |
+| Plotly | Interactive zoom/hover, embeds in Streamlit natively | Matplotlib/SHAP `.plot()` | Static images, poor mobile UX |
+| `@st.cache_data` | Prevents re-loading 50 MB artifacts on every widget interaction | No caching | ~3s re-load on each slider move |
+| `optuna.load_study` | Re-uses existing SQLite study without re-running HPO | Re-running trials | Wasteful and slow |
+
+### Definitions (plain English)
+- **Waterfall chart**: A bar chart that starts from a baseline and shows how each feature pushes the prediction up (red) or down (blue), ending at the final predicted probability.
+- **`@st.cache_data`**: A Streamlit decorator that memoises a function's return value so it only executes once per session, not on every widget re-render.
+- **Dependence plot**: A scatter plot of one feature's raw value (x-axis) vs its SHAP value (y-axis), revealing non-linear effects and interactions.
+- **`optuna.load_study`**: Re-opens an existing Optuna experiment from its SQLite DB so you can query trial history without re-running HPO.
+
+### Real-world use case
+- Streamlit dashboards are used at Airbnb (price prediction explainer), Uber (model monitoring UI), and many Kaggle-winning teams to share ML findings with non-technical stakeholders.
+
+### How to remember it
+- Think of the app as four TV channels on one remote: Predict (live demo), Global (big picture), Dependence (zoom on one feature), HPO (behind-the-scenes tuning history).
+
+### Status
+- [x] Done
+- Next step: Day 5 — FastAPI inference endpoint + Docker image + CI integration test.
+
+---
