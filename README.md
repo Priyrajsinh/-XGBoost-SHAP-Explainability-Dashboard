@@ -1,5 +1,7 @@
 # Diabetes Risk Classifier — XGBoost + SHAP Explainability Dashboard
 
+**[🚀 Live Demo](https://huggingface.co/spaces/Priyrajsinh/diabetes-xgboost-shap)**
+
 End-to-end ML pipeline that trains, calibrates, and serves an XGBoost classifier on the Pima Indians Diabetes dataset with per-prediction SHAP explanations.
 
 ---
