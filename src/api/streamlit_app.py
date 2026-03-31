@@ -11,6 +11,10 @@ import plotly.graph_objects as go
 import streamlit as st
 import yaml
 
+from src.logger import get_logger
+
+logger = get_logger(__name__)
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -28,18 +32,6 @@ FEATURE_NAMES = [
     "Age",
 ]
 
-# Training-data min/max for sliders (hard-coded from data/processed/train.csv)
-SLIDER_BOUNDS = {
-    "Pregnancies": (0, 17, 3),
-    "Glucose": (56, 199, 118),
-    "BloodPressure": (24, 122, 72),
-    "SkinThickness": (7, 99, 28),
-    "Insulin": (15, 744, 125),
-    "BMI": (18.2, 67.1, 32.0),
-    "DiabetesPedigreeFunction": (0.084, 2.329, 0.378),
-    "Age": (21, 72, 29),
-}
-
 
 # ---------------------------------------------------------------------------
 # Cached loaders — never reloaded on interaction
@@ -52,7 +44,17 @@ def load_all():
     shap_vals = np.load("models/shap_values.npy")
     results = json.load(open("reports/results.json"))
     X_test = pd.read_csv("data/processed/test.csv").drop("Outcome", axis=1)
-    return model, imputer, explainer, shap_vals, results, X_test
+    X_train = pd.read_csv("data/processed/train.csv").drop("Outcome", axis=1)
+    slider_bounds = {
+        feat: (
+            float(X_train[feat].min()),
+            float(X_train[feat].max()),
+            float(X_train[feat].median()),
+        )
+        for feat in FEATURE_NAMES
+    }
+    logger.info("dashboard_assets_loaded", extra={"shap_shape": list(shap_vals.shape)})
+    return model, imputer, explainer, shap_vals, results, X_test, slider_bounds
 
 
 # ---------------------------------------------------------------------------
@@ -61,7 +63,7 @@ def load_all():
 st.set_page_config(page_title="Diabetes XGBoost Dashboard", layout="wide")
 st.title("Diabetes Risk Classifier — XGBoost + SHAP")
 
-model, imputer, explainer, shap_vals, results, X_test = load_all()
+model, imputer, explainer, shap_vals, results, X_test, slider_bounds = load_all()
 
 tab1, tab2, tab3, tab4 = st.tabs(
     ["🔮 Predict", "🐝 Global SHAP", "📈 Feature Dependence", "⚡ HPO History"]
@@ -77,7 +79,7 @@ with tab1:
     slider_values = {}
 
     for i, feat in enumerate(FEATURE_NAMES):
-        lo, hi, default = SLIDER_BOUNDS[feat]
+        lo, hi, default = slider_bounds[feat]
         col = col_left if i < 4 else col_right
         if isinstance(lo, float) or isinstance(hi, float):
             slider_values[feat] = col.slider(
@@ -95,6 +97,9 @@ with tab1:
 
         label = "Diabetic" if pred == 1 else "Non-Diabetic"
         color = "red" if pred == 1 else "green"
+        logger.info(
+            "prediction_made", extra={"label": label, "prob": round(float(prob), 4)}
+        )
         st.markdown(
             f"**Prediction:** :{color}[{label}]"
             f" &nbsp;|&nbsp; **Probability:** `{prob:.1%}`"
@@ -192,8 +197,8 @@ with tab4:
     st.subheader("Optuna HPO Convergence")
 
     study = optuna.load_study(
-        study_name="xgb-diabetes",
-        storage="sqlite:///models/optuna.db",
+        study_name=config["optuna"]["study_name"],
+        storage=config["optuna"]["storage"],
     )
     trials_df = study.trials_dataframe()
 

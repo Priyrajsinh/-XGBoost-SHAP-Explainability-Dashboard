@@ -25,6 +25,8 @@ optuna:
   n_trials: 50
   direction: maximize
   metric: weighted_f1
+  study_name: xgb-diabetes
+  storage: sqlite:///models/optuna.db
 
 data:
   train_split: 0.70
