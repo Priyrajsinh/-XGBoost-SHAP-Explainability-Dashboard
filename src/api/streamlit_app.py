@@ -101,18 +101,16 @@ with tab1:
         )
 
         shap_single = explainer(input_imp)
-        base_val = float(
-            explainer.expected_value[0]
-            if hasattr(explainer.expected_value, "__len__")
-            else explainer.expected_value
-        )
+        # ExactExplainer returns shape (1, n_features, n_classes) — take class-1 slice
+        sv_vals = shap_single.values[0, :, 1].tolist()
+        base_val = float(shap_single.base_values[0, 1])
 
         fig = go.Figure(
             go.Waterfall(
                 name="SHAP",
                 orientation="h",
                 y=FEATURE_NAMES,
-                x=shap_single.values[0].tolist(),
+                x=sv_vals,
                 base=base_val,
                 connector={"line": {"color": "rgb(63,63,63)"}},
                 decreasing={"marker": {"color": "steelblue"}},
