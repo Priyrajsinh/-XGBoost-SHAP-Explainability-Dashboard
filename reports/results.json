@@ -1,15 +1,15 @@
 {
   "xgboost": {
-    "accuracy": 0.7844827586206896,
-    "weighted_f1": 0.7862080118669541,
-    "auc_roc": 0.8552631578947368,
-    "brier_score": 0.14810319052794352
+    "accuracy": 0.7845,
+    "weighted_f1": 0.7862,
+    "auc_roc": 0.8553,
+    "brier_score": 0.1481
   },
   "lightgbm": {
-    "accuracy": 0.7931034482758621,
-    "weighted_f1": 0.7942472666105971,
-    "auc_roc": 0.8328947368421052,
-    "brier_score": 0.16526410410632192
+    "accuracy": 0.7931,
+    "weighted_f1": 0.7942,
+    "auc_roc": 0.8329,
+    "brier_score": 0.1653
   },
   "top_shap_features": [
     "Glucose",
@@ -17,5 +17,11 @@
     "Age",
     "DiabetesPedigreeFunction",
     "Insulin"
-  ]
+  ],
+  "calibrated_xgb": {
+    "accuracy": 0.7845,
+    "weighted_f1": 0.7851,
+    "auc_roc": 0.8375,
+    "brier_score": 0.1573
+  }
 }
