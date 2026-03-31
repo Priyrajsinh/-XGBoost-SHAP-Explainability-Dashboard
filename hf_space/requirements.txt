@@ -1,2 +1,9 @@
 gradio
-httpx
+xgboost
+shap
+joblib
+numpy
+pandas
+scikit-learn
+feature-engine
+plotly
