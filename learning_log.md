@@ -248,3 +248,54 @@
 - Next step: Day 5 — FastAPI inference endpoint + Docker image + CI integration test.
 
 ---
+
+## Day 5 — 2026-03-31 — FastAPI /predict with SHAP, 3-model evaluation, Gradio, Docker
+> Project: B2-XGBoost-SHAP
+
+### What was done
+- Built `src/evaluation/evaluate.py`: loads 3 models (xgb, lgbm, calibrated_xgb), computes accuracy/F1/AUC/Brier, saves confusion-matrix PNGs and a 3-curve ROC figure, merges into `reports/results.json`, logs to MLflow.
+- Built `src/api/app.py`: production FastAPI with slowapi rate-limit, CORSMiddleware, TrustedHostMiddleware, Content-Length guard, Prometheus /metrics, `GET /health`, `POST /predict` (SHAP), `GET /model_info`.
+- Built `src/api/gradio_demo.py`: 8 sliders (bounds from train.csv), POST to localhost:8000, displays label + top-3 SHAP features.
+- Built `hf_space/app.py`: identical UI hitting a remote API_URL env var; only gradio + httpx deps.
+- Added multi-stage Dockerfile (builder pip install → runtime copy; non-root appuser; EXPOSE 8000).
+- Added 16 new tests across `test_api.py` and `test_evaluate.py`; full suite 66/66 green, 75.8% coverage.
+
+### Why it was done
+- Need a REST endpoint so downstream apps can score patients without loading the model directly.
+- Docker image enables reproducible deployment to any cloud provider.
+- Gradio/HF Space gives a public interactive demo for the portfolio.
+
+### How it was done
+- **FastAPI lifespan** (`@asynccontextmanager`) loads `calibrated_xgb.joblib`, `imputer.joblib`, `shap_explainer.joblib` once into `_state` dict; every request reads from that dict.
+- **SHAP shape handling**: `ExactExplainer` on a `CalibratedClassifierCV` returns shape `(1, n_features, n_classes)`; sliced as `values[0, :, 1]` to get class-1 float values for the JSON response.
+- **Test isolation**: `ExitStack` patches `joblib.load` (side-effect=[model, imputer, explainer]) and `Path.exists` (returns True only for `*.joblib` paths) so the TestClient lifespan runs without touching disk.
+- **Dockerfile**: builder stage pip-installs to system site-packages; runtime stage copies `/usr/local/lib/python3.12/site-packages` and only the necessary app folders.
+
+### Why this tool / library — not alternatives
+| Tool Used | Why This | Rejected Alternative | Why Not |
+|-----------|----------|---------------------|---------|
+| FastAPI lifespan | Loads models once at startup; async-native; replaces deprecated `@on_event` | `@app.on_event("startup")` | Deprecated in FastAPI 0.93+ |
+| slowapi | Drop-in rate limiter for FastAPI using Redis or in-memory; 1-line decorator | custom middleware | More code, no per-route granularity |
+| prometheus-fastapi-instrumentator | Auto-instruments all routes; one `.instrument(app).expose(app)` call | manual Prometheus counters | Far more boilerplate |
+| ExitStack (tests) | Composes multiple context-manager patches cleanly for module-scoped fixture | nested `with patch` | Deeply nested, hard to read |
+| Multi-stage Dockerfile | Smaller final image: build tools stay in builder, not runtime | single-stage | Larger image, wider attack surface |
+
+### Definitions (plain English)
+- **Lifespan context**: an async generator that FastAPI calls on startup (before `yield`) and shutdown (after `yield`) — the right place to load heavy resources like ML models.
+- **slowapi**: a rate-limiting library that wraps `limits` and integrates with FastAPI's `Request` object to count calls per IP per time window.
+- **ExactExplainer**: SHAP's model-agnostic explainer that enumerates feature subsets exactly; used automatically for calibrated wrappers that TreeExplainer can't handle directly.
+- **Multi-stage Docker build**: uses two `FROM` instructions so dependency build tools are discarded before the final image is created, reducing size and attack surface.
+
+### Real-world use case
+- FastAPI + slowapi rate-limiting is used by companies like Hugging Face to protect their Inference API endpoints from abuse without a separate API gateway.
+- Multi-stage Docker builds are standard practice at Google, Netflix, and Stripe for shipping minimal production containers.
+
+### How to remember it
+- **lifespan = hotel check-in/check-out**: the lobby (startup) prepares your room (loads models); you use it during your stay (requests); checkout (shutdown) cleans up.
+- **multi-stage Docker = build in a factory, ship in a box**: the factory has all the tools (compiler, pip), but only the finished product goes into the shipping box (runtime image).
+
+### Status
+- [x] Done
+- Next step: Day 6 — Streamlit tab for live API calls + full CI Docker build test + README.
+
+---
