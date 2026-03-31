@@ -9,6 +9,7 @@ from uuid import uuid4
 import joblib
 import pandas as pd
 import psutil
+import shap
 import yaml
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,22 +67,31 @@ limiter = Limiter(key_func=get_remote_address)
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    """Load calibrated_xgb, imputer, and shap_explainer on startup."""
+    """Load calibrated_xgb + imputer; rebuild TreeExplainer from base model.
+
+    The serialised shap_explainer.joblib contains numba bytecode that is
+    not portable across Python versions (code() argument count changed in
+    3.12).  Rebuilding TreeExplainer at startup is cheaper, dependency-free,
+    and version-safe.
+    """
     _state["start_time"] = time.time()
 
-    required = ("calibrated_xgb", "imputer", "shap_explainer")
-    for name in required:
+    for name in ("calibrated_xgb", "imputer"):
         p = _MODELS_DIR / f"{name}.joblib"
         if not p.exists():
             raise ModelNotFoundError(f"Required model artifact missing: {p}")
 
     _state["model"] = joblib.load(_MODELS_DIR / "calibrated_xgb.joblib")
     _state["imputer"] = joblib.load(_MODELS_DIR / "imputer.joblib")
-    _state["explainer"] = joblib.load(_MODELS_DIR / "shap_explainer.joblib")
+
+    # Extract the inner XGBoost model from the isotonic-calibrated wrapper
+    # and build a TreeExplainer (pure C++, no numba, works on any Python).
+    base_xgb = _state["model"].calibrated_classifiers_[0].estimator
+    _state["explainer"] = shap.TreeExplainer(base_xgb)
 
     logger.info(
         "startup_complete",
-        extra={"artifacts": list(required)},
+        extra={"artifacts": ["calibrated_xgb", "imputer", "explainer(rebuilt)"]},
     )
     yield
     logger.info("shutdown")

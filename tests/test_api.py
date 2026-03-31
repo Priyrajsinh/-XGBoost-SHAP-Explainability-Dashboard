@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 
 
 def _make_mocks():
-    """Return (mock_model, mock_imputer, mock_explainer) ready for inject."""
+    """Return (mock_model, mock_imputer, mock_explainer_instance)."""
     mock_model = MagicMock()
     mock_model.predict.return_value = np.array([1])
     mock_model.predict_proba.return_value = np.array([[0.3, 0.7]])
@@ -22,13 +22,13 @@ def _make_mocks():
     mock_imputer = MagicMock()
     mock_imputer.transform.return_value = np.zeros((1, 8))
 
-    # ExactExplainer returns (1, n_features, n_classes)
+    # TreeExplainer returns (1, n_features) — 2-D (no class axis for binary)
     mock_shap_out = MagicMock()
-    mock_shap_out.values = np.zeros((1, 8, 2))
-    mock_explainer = MagicMock()
-    mock_explainer.return_value = mock_shap_out
+    mock_shap_out.values = np.zeros((1, 8))
+    mock_explainer_instance = MagicMock()
+    mock_explainer_instance.return_value = mock_shap_out
 
-    return mock_model, mock_imputer, mock_explainer
+    return mock_model, mock_imputer, mock_explainer_instance
 
 
 def _patched_exists(self):
@@ -46,11 +46,15 @@ def api_client():
     """TestClient with lifespan running against mocked artifacts."""
     import src.api.app as app_mod
 
-    mock_model, mock_imputer, mock_explainer = _make_mocks()
+    mock_model, mock_imputer, mock_explainer_instance = _make_mocks()
 
     with ExitStack() as stack:
+        # Lifespan now calls joblib.load twice (model + imputer only)
         mock_load = stack.enter_context(patch("src.api.app.joblib.load"))
-        mock_load.side_effect = [mock_model, mock_imputer, mock_explainer]
+        mock_load.side_effect = [mock_model, mock_imputer]
+        # TreeExplainer is rebuilt at startup — return our mock instance
+        mock_tree_exp = stack.enter_context(patch("src.api.app.shap.TreeExplainer"))
+        mock_tree_exp.return_value = mock_explainer_instance
         stack.enter_context(patch.object(pathlib.Path, "exists", _patched_exists))
         client = stack.enter_context(TestClient(app_mod.app))
         yield client
