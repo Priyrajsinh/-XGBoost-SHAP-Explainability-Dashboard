@@ -214,8 +214,8 @@ with tab4:
     st.plotly_chart(fig, use_container_width=True)
 
     display_cols = ["number", "value"]
-    for col in ["params_max_depth", "params_learning_rate"]:
-        if col in trials_df.columns:
-            display_cols.append(col)
+    for param_col in ["params_max_depth", "params_learning_rate"]:
+        if param_col in trials_df.columns:
+            display_cols.append(param_col)
 
     st.dataframe(trials_df[display_cols].head(10), use_container_width=True)

@@ -134,7 +134,7 @@ def impute_and_split(
     # --- Step 3: fit imputer on train only ---
     imputer = MeanMedianImputer(
         imputation_method="median",
-        variables=zero_as_nan_cols,
+        variables=zero_as_nan_cols,  # type: ignore[arg-type]
     )
     imputer.fit(train_df[_FEATURE_COLS])
     logger.info("Imputer fitted on train set", extra={"variables": zero_as_nan_cols})

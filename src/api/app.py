@@ -119,7 +119,10 @@ app = FastAPI(
 
 # Attach rate-limiter state and its 429 handler
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(
+    RateLimitExceeded,
+    _rate_limit_exceeded_handler,  # type: ignore[arg-type]
+)
 
 # Prometheus /metrics endpoint
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
