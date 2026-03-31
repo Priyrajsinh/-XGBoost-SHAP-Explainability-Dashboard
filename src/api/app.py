@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from uuid import uuid4
 
 import joblib
+import numpy as np
 import pandas as pd
 import psutil
 import shap
@@ -67,12 +68,12 @@ limiter = Limiter(key_func=get_remote_address)
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    """Load calibrated_xgb + imputer; rebuild TreeExplainer from base model.
+    """Load calibrated_xgb + imputer; build PermutationExplainer at startup.
 
-    The serialised shap_explainer.joblib contains numba bytecode that is
-    not portable across Python versions (code() argument count changed in
-    3.12).  Rebuilding TreeExplainer at startup is cheaper, dependency-free,
-    and version-safe.
+    Neither loading the serialised ExactExplainer (numba bytecode, breaks on
+    Python 3.12) nor shap.TreeExplainer (XGBoost 3.x base_score format,
+    broken in SHAP 0.49.1) is portable.  PermutationExplainer wraps any
+    callable — pure Python, no numba, version-independent.
     """
     _state["start_time"] = time.time()
 
@@ -84,10 +85,16 @@ async def lifespan(application: FastAPI):
     _state["model"] = joblib.load(_MODELS_DIR / "calibrated_xgb.joblib")
     _state["imputer"] = joblib.load(_MODELS_DIR / "imputer.joblib")
 
-    # Extract the inner XGBoost model from the isotonic-calibrated wrapper
-    # and build a TreeExplainer (pure C++, no numba, works on any Python).
-    base_xgb = _state["model"].calibrated_classifiers_[0].estimator
-    _state["explainer"] = shap.TreeExplainer(base_xgb)
+    # PermutationExplainer: pure-Python, model-agnostic, no numba.
+    # Background = zero vector (neutral baseline for the 8 Pima features).
+    # max_evals = 2*8 + 1 = 17 forward passes per request — fast enough.
+    background = shap.maskers.Independent(
+        np.zeros((1, len(_FEATURE_NAMES))), max_samples=1
+    )
+    _state["explainer"] = shap.PermutationExplainer(
+        _state["model"].predict_proba,
+        background,
+    )
 
     logger.info(
         "startup_complete",

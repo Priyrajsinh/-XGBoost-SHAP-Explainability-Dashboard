@@ -22,9 +22,9 @@ def _make_mocks():
     mock_imputer = MagicMock()
     mock_imputer.transform.return_value = np.zeros((1, 8))
 
-    # TreeExplainer returns (1, n_features) — 2-D (no class axis for binary)
+    # PermutationExplainer returns (1, n_features, n_classes) for predict_proba
     mock_shap_out = MagicMock()
-    mock_shap_out.values = np.zeros((1, 8))
+    mock_shap_out.values = np.zeros((1, 8, 2))
     mock_explainer_instance = MagicMock()
     mock_explainer_instance.return_value = mock_shap_out
 
@@ -52,9 +52,12 @@ def api_client():
         # Lifespan now calls joblib.load twice (model + imputer only)
         mock_load = stack.enter_context(patch("src.api.app.joblib.load"))
         mock_load.side_effect = [mock_model, mock_imputer]
-        # TreeExplainer is rebuilt at startup — return our mock instance
-        mock_tree_exp = stack.enter_context(patch("src.api.app.shap.TreeExplainer"))
-        mock_tree_exp.return_value = mock_explainer_instance
+        # PermutationExplainer is built at startup — return our mock instance
+        stack.enter_context(patch("src.api.app.shap.maskers.Independent"))
+        mock_perm_exp = stack.enter_context(
+            patch("src.api.app.shap.PermutationExplainer")
+        )
+        mock_perm_exp.return_value = mock_explainer_instance
         stack.enter_context(patch.object(pathlib.Path, "exists", _patched_exists))
         client = stack.enter_context(TestClient(app_mod.app))
         yield client
