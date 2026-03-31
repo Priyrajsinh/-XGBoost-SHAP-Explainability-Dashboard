@@ -299,3 +299,51 @@
 - Next step: Day 6 — Streamlit tab for live API calls + full CI Docker build test + README.
 
 ---
+
+## Day 6 — 2026-03-31 — Tests 76% coverage, all 8 CI lint gates green, README added
+> Project: B2-XGBoost-SHAP
+
+### What was done
+- Created `tests/test_model.py` with 3 artifact smoke tests (xgb_model_loads, imputer_no_nan, shap_values_shape).
+- Fixed mypy (12 → 0 errors): installed `types-PyYAML`, added `# type: ignore[arg-type]` on slowapi handler and feature_engine MeanMedianImputer, renamed `col` → `param_col` in streamlit loop to fix DeltaGenerator/str reuse.
+- Fixed flake8 E501 in `app.py` by splitting `add_exception_handler` call across lines.
+- Wrote `README.md`: architecture diagram, benchmark table (3 models × 4 metrics), SHAP beeswarm screenshot, API usage, CI gate summary, paper references.
+- All 8 CI gates passed: black+isort+flake8+mypy+bandit+radon+interrogate(81.5%)+pytest(76%)+pip-audit.
+
+### Why it was done
+- CI must be first-time green on GitHub Actions push — every lint gate must pass locally first.
+- `tests/test_model.py` adds integration-level confidence that serialised artifacts are valid.
+- README is required for the portfolio repo to communicate scope and benchmarks to reviewers.
+
+### How it was done
+- Ran each of the 8 CI steps in order, fixed failures before proceeding to the next.
+- mypy errors traced to: invariant `list[str]` vs `list[str|int]` (feature_engine), slowapi handler signature narrowing (starlette), and variable shadowing (streamlit).
+- `# type: ignore[arg-type]` used at the call site rather than disabling mypy globally.
+- README written from `reports/results.json` for real benchmark numbers.
+
+### Why this tool / library — not alternatives
+| Tool Used | Why This | Rejected Alternative | Why Not |
+|-----------|----------|---------------------|---------|
+| mypy | Static type checking catches runtime bugs before CI | pylance (IDE only) | Doesn't run in CI pipelines |
+| types-PyYAML | Provides type stubs for yaml module | inline `# type: ignore` on every yaml call | Noisier and harder to maintain |
+| `# type: ignore[arg-type]` | Silences specific mypy error at the call site | Disabling mypy for the whole file | Too broad — hides real bugs |
+| bandit `-ll -ii` | Filters to medium+ severity and confidence only | Running without flags | Too many false positives on low-severity findings |
+
+### Definitions (plain English)
+- **type stub (.pyi file)**: A file containing only type annotations (no runtime code) that mypy reads to know the types of a library that wasn't originally typed.
+- **invariant**: A type parameter where `list[str]` is NOT considered a subtype of `list[str|int]` — mutations could break type safety.
+- **Brier score**: Mean squared error between predicted probability and actual binary outcome; 0 = perfect calibration, 0.25 = random.
+- **cyclomatic complexity**: Count of independent paths through a function; high values indicate hard-to-test logic.
+
+### Real-world use case
+- Google, Stripe, and Meta run mypy as a required CI gate on all Python services — a PR cannot merge if mypy reports errors.
+- SHAP-explained medical risk models (like this one) are required by several EU AI Act provisions to provide human-readable explanations for automated decisions.
+
+### How to remember it
+- CI pre-flight = "black formats → flake8 checks → mypy types → bandit secures → radon simplifies → interrogate documents → pytest tests → pip-audit audits". Run them in that exact funnel — each step catches a different class of defect.
+
+### Status
+- [x] Done
+- Next step: Set GitHub repo topics, confirm Actions green on first push, deploy Gradio to HuggingFace Spaces.
+
+---
